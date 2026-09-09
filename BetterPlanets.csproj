@@ -1,0 +1,150 @@
+﻿<!-- SFS Code Mod Template v1.3.0 -->
+
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net48</TargetFramework>
+        <LangVersion>latest</LangVersion>
+
+        <AssemblyName>BetterPlanets</AssemblyName>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <OutputPath>bin/$(Configuration)</OutputPath>
+
+        <!-- === Settings == -->
+        <!-- These are the only things you should be changing -->
+        <ImplicitManagedReferences>true</ImplicitManagedReferences>
+        <AutoCopyMod>true</AutoCopyMod>
+        <FallbackSteamPath>UnknownSteamPath</FallbackSteamPath>
+        <!-- =============== -->
+    </PropertyGroup>
+
+    <!-- OS Detection -->
+    <PropertyGroup>
+        <IsWindows>$([System.OperatingSystem]::IsWindows())</IsWindows>
+        <IsMacOS>$([System.OperatingSystem]::IsMacOS())</IsMacOS>
+        <IsLinux>$([System.OperatingSystem]::IsLinux())</IsLinux>
+
+        <OperatingSystem Condition="'$(IsWindows)' == 'true'">Windows</OperatingSystem>
+        <OperatingSystem Condition="'$(IsMacOS)' == 'true'">MacOS</OperatingSystem>
+        <OperatingSystem Condition="'$(IsLinux)' == 'true'">Linux</OperatingSystem>
+    </PropertyGroup>
+
+    <!-- User Profile Home Path -->
+    <PropertyGroup>
+        <!-- Credits to https://cazzulino.com for this! -->
+        <UserProfileHome Condition="'$([MSBuild]::IsOSUnixLike())' == 'true'">$(HOME)</UserProfileHome>
+        <UserProfileHome Condition="'$([MSBuild]::IsOSUnixLike())' != 'true'">$(USERPROFILE)</UserProfileHome>
+    </PropertyGroup>
+
+    <!-- Steam Path Resolution -->
+    <PropertyGroup>
+        <!-- 64 bit Windows path, note that registry paths must use backslashes -->
+        <DirtySteamPath Condition="$(IsWindows)">$([MSBuild]::GetRegistryValue(`HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Valve\Steam`, `InstallPath`))</DirtySteamPath>
+        <!-- 32 bit Windows path, note that registry paths must use backslashes -->
+        <DirtySteamPath Condition="'$(DirtySteamPath)' == '' And $(IsWindows)">$([MSBuild]::GetRegistryValue(`HKEY_LOCAL_MACHINE\SOFTWARE\Valve\Steam`, `InstallPath`))</DirtySteamPath>
+
+        <!-- MacOS typical steam path -->
+        <DirtySteamPath Condition="'$(DirtySteamPath)' == '' And Exists('$(UserProfileHome)/Library/Application Support/Steam')">$(UserProfileHome)/Library/Application Support/Steam</DirtySteamPath>
+
+        <!-- Linux path 1 (Flatpak) -->
+        <DirtySteamPath Condition="'$(DirtySteamPath)' == '' And Exists('$(UserProfileHome)/.var/app/com.valvesoftware.Steam/.local/share/Steam/')">$(UserProfileHome)/.var/app/com.valvesoftware.Steam/.local/share/Steam</DirtySteamPath>
+
+        <!-- Linux path 2 (Native) -->
+        <DirtySteamPath Condition="'$(DirtySteamPath)' == '' And Exists('$(UserProfileHome)/.local/share/Steam')">$(UserProfileHome)/.local/share/Steam</DirtySteamPath>
+
+        <!-- Linux path 3 (Symlink) -->
+        <DirtySteamPath Condition="'$(DirtySteamPath)' == '' And Exists('$(UserProfileHome)/.steam/steam')">$(UserProfileHome)/.steam/steam</DirtySteamPath>
+
+        <ResolvedSteamPath Condition="'$(DirtySteamPath)' != ''">$(DirtySteamPath)</ResolvedSteamPath>
+        <ResolvedSteamPath Condition="'$(DirtySteamPath)' == ''">$(FallbackSteamPath)</ResolvedSteamPath>
+        <SteamPath>$([System.String]::Copy('$(ResolvedSteamPath)').Replace('\', '/'))</SteamPath>
+    </PropertyGroup>
+
+    <!-- Common Paths -->
+    <PropertyGroup>
+        <!-- SFS Path: Verified for Windows and MacOS, linux untested -->
+        <SFSPath>$(SteamPath)/steamapps/common/Spaceflight Simulator/Spaceflight Simulator Game</SFSPath>
+        <!-- MacOS does not have spaces -->
+        <SFSPath Condition="$(IsMacOS)">$(SteamPath)/steamapps/common/Spaceflight Simulator/SpaceflightSimulatorGame.app</SFSPath>
+
+        <!-- Managed Folder: Verified for Windows and MacOS, linux untested -->
+        <ManagedFolder>$(SFSPath)/Spaceflight Simulator_Data/Managed</ManagedFolder>
+        <!-- MacOS shenanigans -->
+        <ManagedFolder Condition="$(IsMacOS)">$(SFSPath)/Contents/Resources/Data/Managed</ManagedFolder>
+
+        <!-- Mods Folder: Verified for Windows and MacOS, linux untested -->
+        <ModsFolder>$(SFSPath)/Mods</ModsFolder>
+    </PropertyGroup>
+
+    <!-- Debugging logs -->
+    <Target Name="VerifyPaths" BeforeTargets="CoreCompile;PrepareForBuild">
+        <!-- OS -->
+        <Message Text="Operating System: $(OperatingSystem)" Importance="High"/>
+        <Message Text="Steam path resolved to: $(SteamPath)" Importance="High"/>
+        <Message Text="Spaceflight Simulator path resolved to: $(SFSPath)" Importance="High"/>
+        <Message Text="Managed folder resolved to: $(ManagedFolder)" Importance="High"/>
+        <Message Text="Mods folder resolved to: $(ModsFolder)" Importance="High"/>
+    </Target>
+
+    <!-- Implicit Managed References -->
+    <ItemGroup>
+        <Reference
+                Include="$(ManagedFolder)/*.dll"
+                Exclude="$(ManagedFolder)/System.*.dll;
+            $(ManagedFolder)/System.dll;
+            $(ManagedFolder)/Firebase.*.dll;
+            $(ManagedFolder)/Unity.Tasks.dll;
+            $(ManagedFolder)/Unity.Compat.dll"
+                Condition="'$(ImplicitManagedReferences)' == 'true'">
+            <Private>false</Private>
+        </Reference>
+
+        <Reference Include="Assembly-CSharp.dll" Condition="'$(ImplicitManagedReferences)' == 'false'">
+            <HintPath>$(ManagedFolder)/Assembly-CSharp.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+
+        <Reference Include="UnityEngine.dll" Condition="'$(ImplicitManagedReferences)' == 'false'">
+            <HintPath>$(ManagedFolder)/UnityEngine.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+
+        <Reference Include="UnityEngine.CoreModule.dll" Condition="'$(ImplicitManagedReferences)' == 'false'">
+            <HintPath>$(ManagedFolder)/UnityEngine.CoreModule.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+
+        <Reference Include="0Harmony.dll" Condition="'$(ImplicitManagedReferences)' == 'false'">
+            <HintPath>$(ManagedFolder)/0Harmony.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+
+        <!-- Mod References -->
+        <Reference Include="UITools" Condition="Exists('$(ModsFolder)/UITools')">
+            <HintPath>$(ModsFolder)/UITools/UITools.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+
+        <Reference Include="KMCoreUtils" Condition="Exists('$(ModsFolder)/KMCoreUtils')">
+            <HintPath>$(ModsFolder)/KMCoreUtils/KMCoreUtils.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+    </ItemGroup>
+
+
+    <Target Name="VerifyInstallation" BeforeTargets="Build">
+        <Error
+                Condition="!Exists('$(ManagedFolder)')"
+                Text="
+            Spaceflight Simulator installation could not be found. 
+            Edit FallbackSteamPath in the .csproj or install the game through Steam.
+            "
+        />
+    </Target>
+
+    <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="Exists('$(SFSPath)') And '$(AutoCopyMod)' == 'true'">
+        <MakeDir Directories="$(ModsFolder)/$(AssemblyName)"
+                 Condition="!Exists('$(ModsFolder)/$(AssemblyName)')"/>
+
+        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(ModsFolder)/$(AssemblyName)/" SkipUnchangedFiles="true"/>
+    </Target>
+</Project>

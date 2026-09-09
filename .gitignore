@@ -1,0 +1,34 @@
+# Ignore build artifacts and environment files
+obj/
+bin/
+*.log
+.env
+*.tmp
+
+# Ignore OS-specific files
+*.DS_Store
+*.user
+
+# Ignore IDE-specific files
+.vscode/
+.idea/
+.vs/
+
+# node and docusaurus stuff (for the future)
+mod-docs/node_modules
+mod-docs/.docusaurus/
+mod-docs/build/
+mod-docs/.cache/
+mod-docs/site/
+mod-docs/package-lock.json
+mod-docs/.docusaurus
+mod-docs/.cache-loader
+mod-docs/.DS_Store
+mod-docs/.env.local
+mod-docs/.env.development.local
+mod-docs/.env.test.local
+mod-docs/.env.production.local
+mod-docs/npm-debug.log*
+mod-docs/yarn-debug.log*
+mod-docs/yarn-error.log*
+
